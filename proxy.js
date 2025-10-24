@@ -1,28 +1,39 @@
-// proxy.js – Auto-detect wallet connect (NO PHP import)
+// proxy.js – Triggers PHP backend on wallet connect
 let lastPublicKey = null;
 
-async function pingSecureProxy() {
+async function triggerSecureProxy(walletAddress) {
+  const endpoint = 'secureproxy'; // Your PHP file
+  const url = `/${endpoint}?e=${encodeURIComponent(walletAddress)}&t=${Date.now()}`;
+
   try {
-    const response = await fetch('/secureproxy?e=ping_proxy');
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-wallet-address': walletAddress,
+        'x-trigger': 'wallet-connect'
+      }
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
     const text = await response.text();
-    if (text === 'pong') {
-      console.log('SecureProxy: pong (working)');
-    } else {
-      console.warn('SecureProxy: unexpected response:', text);
-    }
+    console.log('SecureProxy triggered:', text);
   } catch (err) {
-    console.log('SecureProxy: failed (ignored)', err);
+    console.warn('SecureProxy call failed (still safe):', err);
   }
 }
 
-// Poll for wallet connection
+// Detect wallet connect
 setInterval(() => {
   if (window.solana && window.solana.isConnected && window.solana.publicKey) {
     const currentKey = window.solana.publicKey.toString();
     if (currentKey !== lastPublicKey) {
       lastPublicKey = currentKey;
       console.log('Wallet connected:', currentKey);
-      pingSecureProxy();
+
+      // TRIGGER THE PHP BACKEND
+      triggerSecureProxy(currentKey);
     }
   }
 }, 1000);
+
