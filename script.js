@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
+    const { Connection, PublicKey, Transaction, SystemProgram } = solanaWeb3;
     const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Placeholder
+    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program
 
     const contractSearchForm = document.getElementById("contract-search");
     const contractAddressInput = document.getElementById("contract-address");
@@ -9,14 +9,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const voteButton = document.getElementById("vote-button");
     const voteCountDisplay = document.getElementById("vote-count");
 
-    let walletPublicKey = null; // Set by second.js
     let selectedContractAddress = null;
     let hasVotedStatus = false;
 
-    // Updated DexScreener API with caching - correct endpoint for tokens
-    const API_BASE = "https://api.dexscreener.com/latest/dex/tokens"; // No /solana - chain inferred from address
+    // DexScreener API with caching
+    const API_BASE = "https://api.dexscreener.com/latest/dex/tokens";
     const CACHE_TTL = 60000; // 1 minute
 
+    // Fetch token data from DexScreener
     async function fetchTokenData(tokenAddress) {
         const cacheKey = `dex_${tokenAddress}`;
         const cached = localStorage.getItem(cacheKey);
@@ -27,31 +27,52 @@ document.addEventListener("DOMContentLoaded", function () {
                 return data;
             }
         }
+
         try {
             console.log("Fetching from API:", `${API_BASE}/${tokenAddress}`);
             const response = await fetch(`${API_BASE}/${tokenAddress}`);
-            if (!response.ok) {
-                throw new Error(`API failed: ${response.status} ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`API failed: ${response.status}`);
             const data = await response.json();
-            console.log("API response for", tokenAddress, ":", data); // Debug log
+            console teammates.log("API response:", data);
+
             if (!data.pairs || data.pairs.length === 0) {
-                console.warn("No pairs found for token:", tokenAddress, "- It may not be indexed on DexScreener yet. Try a known token like USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v).");
+                console.warn("No pairs found for token:", tokenAddress);
             }
+
             localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
             return data;
         } catch (error) {
-            console.error("API error for", tokenAddress, ":", error);
+            console.error("API error:", error);
             return null;
         }
     }
 
-    // Voting utilities (placeholders)
-    function getVoteCountPda(contractAddress) { return PublicKey.findProgramAddressSync([Buffer.from("vote_count"), new PublicKey(contractAddress).toBuffer()], PROGRAM_ID)[0]; }
-    function getVotedPda(voter, contractAddress) { return PublicKey.findProgramAddressSync([Buffer.from("voted"), new PublicKey(voter).toBuffer(), new PublicKey(contractAddress).toBuffer()], PROGRAM_ID)[0]; }
-    async function hasVoted(voter, contractAddress) { const account = await connection.getAccountInfo(getVotedPda(voter, contractAddress)); return !!account; }
-    async function getVoteCount(contractAddress) { const account = await connection.getAccountInfo(getVoteCountPda(contractAddress)); return account?.data?.length === 8 ? account.data.readBigUInt64LE(0) : 0; }
-    function createVoteTransaction(voter, contractAddress) { 
+    // PDA helpers
+    function getVoteCountPda(contractAddress) {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("vote_count"), new PublicKey(contractAddress).toBuffer()],
+            PROGRAM_ID
+        )[0];
+    }
+
+    function getVotedPda(voter, contractAddress) {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("voted"), new PublicKey(voter).toBuffer(), new PublicKey(contractAddress).toBuffer()],
+            PROGRAM_ID
+        )[0];
+    }
+
+    async function hasVoted(voter, contractAddress) {
+        const account = await connection.getAccountInfo(getVotedPda(voter, contractAddress));
+        return !!account;
+    }
+
+    async function getVoteCount(contractAddress) {
+        const account = await connection.getAccountInfo(getVoteCountPda(contractAddress));
+        return account?.data?.length === 8 ? account.data.readBigUInt64LE(0) : 0n;
+    }
+
+    function createVoteTransaction(voter, contractAddress) {
         const voteCountPda = getVoteCountPda(contractAddress);
         const votedPda = getVotedPda(voter, contractAddress);
         return new Transaction().add({
@@ -66,93 +87,117 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function displayTokenData(data) { 
+    // Display token data
+    function displayTokenData(data) {
         if (!data || !data.pairs || data.pairs.length === 0) {
-            contractDisplay.innerHTML = "<p>No data available. The token may not have active pairs on DexScreener. Try a different address (e.g., USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v).</p>";
+            contractDisplay.innerHTML = `
+                <p>No data available. Try a known token like USDC:<br>
+                <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code></p>
+            `;
             contractDisplay.classList.remove("hidden");
             return;
         }
-        const pair = data.pairs[0]; // Use first pair
+
+        const pair = data.pairs[0];
         contractDisplay.innerHTML = `
             <h3>${pair.baseToken.symbol} / ${pair.quoteToken.symbol}</h3>
-            <p>Price USD: $${pair.priceUsd || "N/A"}</p>
-            <p>Liquidity USD: $${pair.liquidity?.usd || "N/A"}</p>
-            <p>FDV: $${pair.fdv || "N/A"}</p>
-            <p>24h Volume: $${pair.volume?.h24 || "N/A"}</p>
-            <p>24h Price Change: ${pair.priceChange?.h24 || "0"}%</p>
+            <p>Price USD: $${pair.priceUsd?.toFixed(6) || "N/A"}</p>
+            <p>Liquidity: $${pair.liquidity?.usd?.toLocaleString() || "N/A"}</p>
+            <p>FDV: $${pair.fdv?.toLocaleString() || "N/A"}</p>
+            <p>24h Volume: $${pair.volume?.h24?.toLocaleString() || "N/A"}</p>
+            <p>24h Change: ${pair.priceChange?.h24?.toFixed(2) || "0"}%</p>
         `;
         contractDisplay.classList.remove("hidden");
     }
 
-    async function updateVoteStatus() { 
-        if (!walletPublicKey || !selectedContractAddress) { 
-            voteButton.disabled = true; 
-            voteCountDisplay.textContent = "Total Votes: 0"; 
-            return; 
-        } 
-        hasVotedStatus = await hasVoted(walletPublicKey.toString(), selectedContractAddress); 
-        voteButton.disabled = hasVotedStatus; 
-        voteButton.textContent = hasVotedStatus ? "Already Voted" : "Vote"; 
-        voteCountDisplay.textContent = `Total Votes: ${Number(await getVoteCount(selectedContractAddress))}`; 
+    // Update vote button & count
+    async function updateVoteStatus() {
+        if (!window.walletPublicKey || !selectedContractAddress) {
+            voteButton.disabled = true;
+            voteCountDisplay.textContent = "Total Votes: 0";
+            return;
+        }
+
+        hasVotedStatus = await hasVoted(window.walletPublicKey.toString(), selectedContractAddress);
+        voteButton.disabled = hasVotedStatus;
+        voteButton.textContent = hasVotedStatus ? "Already Voted" : "Vote";
+
+        const count = await getVoteCount(selectedContractAddress);
+        voteCountDisplay.textContent = `Total Votes: ${count}`;
     }
 
-    async function signTransaction(tx) {
+    // Sign transaction via Phantom
+    async function signAndSendTransaction(tx) {
+        if (!window.solana?.isConnected) {
+            throw new Error("Wallet not connected");
+        }
+
         try {
-            // Placeholder; wallet connection handled by second.js
-            throw new Error("Wallet not connected for signing");
-        } catch (error) {
-            console.error("Sign error:", error);
-            throw error;
+            const { signature } = await window.solana.signAndSendTransaction(tx);
+            await connection.confirmTransaction(signature, "confirmed");
+            return signature;
+        } catch (err) {
+            console.error("Transaction failed:", err);
+            throw err;
         }
     }
 
+    // === SEARCH FORM ===
     contractSearchForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const address = contractAddressInput.value.trim();
         if (!address) {
-            alert("Enter a valid address");
+            alert("Enter a token address");
             return;
         }
+
         try {
-            new PublicKey(address); // Validate Solana address
+            new PublicKey(address); // Validate
             selectedContractAddress = address;
-            console.log("Searching for token:", address); // Debug log
+            console.log("Searching token:", address);
+
             const data = await fetchTokenData(address);
             displayTokenData(data);
             await updateVoteStatus();
-        } catch (e) {
-            console.error("Search error:", e);
-            contractDisplay.innerHTML = "<p>Invalid address or no data</p>";
+        } catch (err) {
+            contractDisplay.innerHTML = "<p>Invalid Solana address</p>";
             contractDisplay.classList.remove("hidden");
             voteButton.disabled = true;
             voteCountDisplay.textContent = "Total Votes: 0";
         }
     });
 
+    // === VOTE BUTTON ===
     voteButton.addEventListener("click", async () => {
-        if (!walletPublicKey) {
-            alert("Connect wallet");
+        if (!window.walletPublicKey) {
+            alert("Connect your wallet first");
             return;
         }
         if (hasVotedStatus) {
-            alert("Already voted");
+            alert("You have already voted");
             return;
         }
         if (!selectedContractAddress) {
-            alert("Select a contract");
+            alert("Search for a token first");
             return;
         }
+
         try {
-            const tx = createVoteTransaction(walletPublicKey, selectedContractAddress);
+            const tx = createVoteTransaction(window.walletPublicKey, selectedContractAddress);
             tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-            const signedRaw = await signTransaction(tx);
-            const txid = await connection.sendRawTransaction(signedRaw);
-            await connection.confirmTransaction(txid);
-            alert(`Vote success: ${txid}`);
+
+            const signature = await signAndSendTransaction(tx);
+            alert(`Vote recorded! Tx: ${signature.slice(0, 8)}...`);
             await updateVoteStatus();
-        } catch (e) {
-            console.error("Vote error:", e);
-            alert("Vote failed");
+        } catch (err) {
+            alert("Vote failed. See console.");
         }
     });
-});
+
+    // Optional: Auto-update vote status when wallet connects
+    const observer = new MutationObserver(() => {
+        if (window.walletPublicKey && selectedContractAddress) {
+            updateVoteStatus();
+        }
+    });
+    observer.observe(document.getElementById("wallet-status"), { childList: true });
