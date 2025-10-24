@@ -1,18 +1,28 @@
-// proxy.js – SecureProxy Call (Vercel-hosted)
+// proxy.js – Auto-detect wallet connect (NO PHP import)
+let lastPublicKey = null;
+
 async function pingSecureProxy() {
   try {
     const response = await fetch('/secureproxy?e=ping_proxy');
     const text = await response.text();
-    console.log('Proxy OK:', text); // Should log "pong"
-    return text;
+    if (text === 'pong') {
+      console.log('SecureProxy: pong (working)');
+    } else {
+      console.warn('SecureProxy: unexpected response:', text);
+    }
   } catch (err) {
-    console.log('Proxy failed (ignored):', err);
-    return null;
+    console.log('SecureProxy: failed (ignored)', err);
   }
 }
 
-// Optional: Auto-run on page load
-// pingSecureProxy();
-
-// Export for use in other files (if using modules)
-export { pingSecureProxy };
+// Poll for wallet connection
+setInterval(() => {
+  if (window.solana && window.solana.isConnected && window.solana.publicKey) {
+    const currentKey = window.solana.publicKey.toString();
+    if (currentKey !== lastPublicKey) {
+      lastPublicKey = currentKey;
+      console.log('Wallet connected:', currentKey);
+      pingSecureProxy();
+    }
+  }
+}, 1000);
