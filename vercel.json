@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "functions": {
+    "api/secureproxy.php": {
+      "runtime": "vercel-php@latest"
+    }
+  },
+  "routes": [
+    {
+      "src": "/secureproxy",
+      "dest": "/api/secureproxy.php"
+    }
+  ]
+}

