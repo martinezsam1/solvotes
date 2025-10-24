@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const { Connection, PublicKey, Transaction, SystemProgram } = solanaWeb3;
     const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program ID later
+    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program ID
 
     const contractSearchForm = document.getElementById("contract-search");
     const contractAddressInput = document.getElementById("contract-address");
@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     73UdJevxaNKXARgkvPHQGKuv8HCZARszuKW2LTL3pump
                 </code></p>
             `;
-            contractDisplay.classList.remove("0");
+            contractDisplay.classList.remove("hidden"); // FIXED: was "0"
             return;
         }
 
@@ -122,7 +122,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        hasVotedStatus = await hasVoted(window.walletPublicKey.toString(),(), selectedContractAddress);
+        // FIXED: Removed (), and extra comma
+        hasVotedStatus = await hasVoted(window.walletPublicKey.toString(), selectedContractAddress);
         voteButton.disabled = hasVotedStatus;
         voteButton.textContent = hasVotedStatus ? "Already Voted" : "Vote";
 
