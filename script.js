@@ -80,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // FIXED: Convert strings to numbers before .toFixed()
     function displayTokenData(data) {
         if (!data || !data.pairs || data.pairs.length === 0) {
             contractDisplay.innerHTML = `
@@ -118,7 +117,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!window.walletPublicKey || !selectedContractAddress) {
             voteButton.disabled = true;
             voteCountDisplay.textContent = "Total Votes: 0";
-           5
             return;
         }
 
@@ -178,7 +176,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         try {
-            const tx knives = createVoteTransaction(window.walletPublicKey, selectedContractAddress);
+            // FIXED: "tx knives" → "tx"
+            const tx = createVoteTransaction(window.walletPublicKey, selectedContractAddress);
             tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
             const signature = await signAndSendTransaction(tx);
