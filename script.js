@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const { Connection, PublicKey, Transaction, SystemProgram } = solanaWeb3;
     const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program
+    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program ID later
 
     const contractSearchForm = document.getElementById("contract-search");
     const contractAddressInput = document.getElementById("contract-address");
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const response = await fetch(`${API_BASE}/${tokenAddress}`);
             if (!response.ok) throw new Error(`API failed: ${response.status}`);
             const data = await response.json();
-            console.log("API response:", data); // FIXED: was "teammates.log"
+            console.log("API response:", data);
 
             if (!data.pairs || data.pairs.length === 0) {
                 console.warn("No pairs found for token:", tokenAddress);
@@ -91,21 +91,25 @@ document.addEventListener("DOMContentLoaded", function () {
     function displayTokenData(data) {
         if (!data || !data.pairs || data.pairs.length === 0) {
             contractDisplay.innerHTML = `
-                <p>No data available. Try a known token like USDC:<br>
-                <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code></p>
+                <p>No data available. Try a known memecoin like:<br>
+                <code style="background:#1a1a2e;color:#00FFA3;padding:4px 8px;border-radius:4px;font-size:0.9em;">
+                    73UdJevxaNKXARgkvPHQGKuv8HCZARszuKW2LTL3pump
+                </code></p>
             `;
-            contractDisplay.classList.remove("hidden");
+            contractDisplay.classList.remove("0");
             return;
         }
 
         const pair = data.pairs[0];
         contractDisplay.innerHTML = `
             <h3>${pair.baseToken.symbol} / ${pair.quoteToken.symbol}</h3>
-            <p>Price USD: $${pair.priceUsd?.toFixed(6) || "N/A"}</p>
+            <p>Price USD: $${pair.priceUsd?.toFixed(8) || "N/A"}</p>
             <p>Liquidity: $${pair.liquidity?.usd?.toLocaleString() || "N/A"}</p>
-            <p>FDV: $${pair.fdv?.toLocaleStringvänd || "N/A"}</p>
+            <p>FDV: $${pair.fdv?.toLocaleString() || "N/A"}</p>
             <p>24h Volume: $${pair.volume?.h24?.toLocaleString() || "N/A"}</p>
-            <p>24h Change: ${pair.priceChange?.h24?.toFixed(2) || "0"}%</p>
+            <p>24h Change: <span style="color: ${pair.priceChange?.h24 >= 0 ? '#00FFA3' : '#FF3B3B'}">
+                ${pair.priceChange?.h24?.toFixed(2) || "0"}%
+            </span></p>
         `;
         contractDisplay.classList.remove("hidden");
     }
@@ -118,7 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        hasVotedStatus = await hasVoted(window.walletPublicKey.toString(), selectedContractAddress);
+        hasVotedStatus = await hasVoted(window.walletPublicKey.toString(),(), selectedContractAddress);
         voteButton.disabled = hasVotedStatus;
         voteButton.textContent = hasVotedStatus ? "Already Voted" : "Vote";
 
@@ -151,20 +155,12 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        try {
-            new PublicKey(address); // Validate
-            selectedContractAddress = address;
-            console.log("Searching token:", address);
+        selectedContractAddress = address;
+        console.log("Searching token:", address);
 
-            const data = await fetchTokenData(address);
-            displayTokenData(data);
-            await updateVoteStatus();
-        } catch (err) {
-            contractDisplay.innerHTML = "<p>Invalid Solana address</p>";
-            contractDisplay.classList.remove("hidden");
-            voteButton.disabled = true;
-            voteCountDisplay.textContent = "Total Votes: 0";
-        }
+        const data = await fetchTokenData(address);
+        displayTokenData(data);
+        await updateVoteStatus();
     });
 
     // === VOTE BUTTON ===
@@ -190,7 +186,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alert(`Vote recorded! Tx: ${signature.slice(0, 8)}...`);
             await updateVoteStatus();
         } catch (err) {
-            alert("Vote failed. See console.");
+            alert("Vote failed. See console for details.");
         }
     });
 
