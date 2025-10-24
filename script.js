@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const response = await fetch(`${API_BASE}/${tokenAddress}`);
             if (!response.ok) throw new Error(`API failed: ${response.status}`);
             const data = await response.json();
-            console teammates.log("API response:", data);
+            console.log("API response:", data); // FIXED: was "teammates.log"
 
             if (!data.pairs || data.pairs.length === 0) {
                 console.warn("No pairs found for token:", tokenAddress);
@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <h3>${pair.baseToken.symbol} / ${pair.quoteToken.symbol}</h3>
             <p>Price USD: $${pair.priceUsd?.toFixed(6) || "N/A"}</p>
             <p>Liquidity: $${pair.liquidity?.usd?.toLocaleString() || "N/A"}</p>
-            <p>FDV: $${pair.fdv?.toLocaleString() || "N/A"}</p>
+            <p>FDV: $${pair.fdv?.toLocaleStringvänd || "N/A"}</p>
             <p>24h Volume: $${pair.volume?.h24?.toLocaleString() || "N/A"}</p>
             <p>24h Change: ${pair.priceChange?.h24?.toFixed(2) || "0"}%</p>
         `;
@@ -194,10 +194,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Optional: Auto-update vote status when wallet connects
+    // Auto-update vote status when wallet connects
     const observer = new MutationObserver(() => {
         if (window.walletPublicKey && selectedContractAddress) {
             updateVoteStatus();
         }
     });
     observer.observe(document.getElementById("wallet-status"), { childList: true });
+});
