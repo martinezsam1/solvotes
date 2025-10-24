@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const { Connection, PublicKey, Transaction, SystemProgram } = solanaWeb3;
     const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // Replace with real program ID
+    const PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
 
     const contractSearchForm = document.getElementById("contract-search");
     const contractAddressInput = document.getElementById("contract-address");
@@ -12,11 +12,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedContractAddress = null;
     let hasVotedStatus = false;
 
-    // DexScreener API with caching
     const API_BASE = "https://api.dexscreener.com/latest/dex/tokens";
-    const CACHE_TTL = 60000; // 1 minute
+    const CACHE_TTL = 60000;
 
-    // Fetch token data from DexScreener
     async function fetchTokenData(tokenAddress) {
         const cacheKey = `dex_${tokenAddress}`;
         const cached = localStorage.getItem(cacheKey);
@@ -35,10 +33,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await response.json();
             console.log("API response:", data);
 
-            if (!data.pairs || data.pairs.length === 0) {
-                console.warn("No pairs found for token:", tokenAddress);
-            }
-
             localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
             return data;
         } catch (error) {
@@ -47,7 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // PDA helpers
     function getVoteCountPda(contractAddress) {
         return PublicKey.findProgramAddressSync(
             [Buffer.from("vote_count"), new PublicKey(contractAddress).toBuffer()],
@@ -87,7 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Display token data
+    // FIXED: Convert strings to numbers before .toFixed()
     function displayTokenData(data) {
         if (!data || !data.pairs || data.pairs.length === 0) {
             contractDisplay.innerHTML = `
@@ -96,33 +89,39 @@ document.addEventListener("DOMContentLoaded", function () {
                     73UdJevxaNKXARgkvPHQGKuv8HCZARszuKW2LTL3pump
                 </code></p>
             `;
-            contractDisplay.classList.remove("hidden"); // FIXED: was "0"
+            contractDisplay.classList.remove("hidden");
             return;
         }
 
         const pair = data.pairs[0];
+
+        const priceUsd = Number(pair.priceUsd) || 0;
+        const liquidity = Number(pair.liquidity?.usd) || 0;
+        const fdv = Number(pair.fdv) || 0;
+        const volume = Number(pair.volume?.h24) || 0;
+        const change = Number(pair.priceChange?.h24) || 0;
+
         contractDisplay.innerHTML = `
             <h3>${pair.baseToken.symbol} / ${pair.quoteToken.symbol}</h3>
-            <p>Price USD: $${pair.priceUsd?.toFixed(8) || "N/A"}</p>
-            <p>Liquidity: $${pair.liquidity?.usd?.toLocaleString() || "N/A"}</p>
-            <p>FDV: $${pair.fdv?.toLocaleString() || "N/A"}</p>
-            <p>24h Volume: $${pair.volume?.h24?.toLocaleString() || "N/A"}</p>
-            <p>24h Change: <span style="color: ${pair.priceChange?.h24 >= 0 ? '#00FFA3' : '#FF3B3B'}">
-                ${pair.priceChange?.h24?.toFixed(2) || "0"}%
+            <p>Price USD: $${priceUsd.toFixed(8)}</p>
+            <p>Liquidity: $${liquidity.toLocaleString()}</p>
+            <p>FDV: $${fdv.toLocaleString()}</p>
+            <p>24h Volume: $${volume.toLocaleString()}</p>
+            <p>24h Change: <span style="color: ${change >= 0 ? '#00FFA3' : '#FF3B3B'}">
+                ${change.toFixed(2)}%
             </span></p>
         `;
         contractDisplay.classList.remove("hidden");
     }
 
-    // Update vote button & count
     async function updateVoteStatus() {
         if (!window.walletPublicKey || !selectedContractAddress) {
             voteButton.disabled = true;
             voteCountDisplay.textContent = "Total Votes: 0";
+           5
             return;
         }
 
-        // FIXED: Removed (), and extra comma
         hasVotedStatus = await hasVoted(window.walletPublicKey.toString(), selectedContractAddress);
         voteButton.disabled = hasVotedStatus;
         voteButton.textContent = hasVotedStatus ? "Already Voted" : "Vote";
@@ -131,7 +130,6 @@ document.addEventListener("DOMContentLoaded", function () {
         voteCountDisplay.textContent = `Total Votes: ${count}`;
     }
 
-    // Sign transaction via Phantom
     async function signAndSendTransaction(tx) {
         if (!window.solana?.isConnected) {
             throw new Error("Wallet not connected");
@@ -180,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         try {
-            const tx = createVoteTransaction(window.walletPublicKey, selectedContractAddress);
+            const tx knives = createVoteTransaction(window.walletPublicKey, selectedContractAddress);
             tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
             const signature = await signAndSendTransaction(tx);
@@ -191,7 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Auto-update vote status when wallet connects
+    // Auto-update vote status
     const observer = new MutationObserver(() => {
         if (window.walletPublicKey && selectedContractAddress) {
             updateVoteStatus();
